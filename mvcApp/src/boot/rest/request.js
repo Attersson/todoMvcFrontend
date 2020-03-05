@@ -28,6 +28,53 @@ axiosInstance.interceptors.response.use(res => {
 })
 
 /**
+ * Normalizes an object from AWS format into normal format used here.
+ *
+ * @param {object} obj Input object in AWS format
+ *
+ * Example:
+ * {
+ *   "completed": {
+ *      "BOOL": false
+ *   },
+ *   "id": {
+ *      "N": "2"
+ *   },
+ *   "description": {
+ *      "S": "Hey man"
+ *   }
+ * }
+ * @returns {object}
+ *  {
+ *    "completed": false,
+ *    "id": 2,
+ *    "description": "Hey man"
+ *  }
+ *
+ */
+const normalizeAwsResponse = function (obj) {
+  if (typeof obj !== 'object') return obj
+  const res = {}
+  Object.keys(obj).forEach(k => {
+    switch (k) {
+      case 'id':
+        res.id = +obj.id.N
+        break
+      case 'description':
+        res.description = obj.description.S
+        break
+      case 'completed':
+        res.completed = !!obj.completed.BOOL
+        break
+      default:
+        res.k = obj.k
+        break
+    }
+  })
+  return res
+}
+
+/**
  * Defines a common request procedure.
  *
  * @export
@@ -51,7 +98,7 @@ export async function restRequest (partialUrl, method, data, raiseErrorDialog = 
   else {
     try {
       const response = await methodRef(partialUrl, data)
-      return (response.data ? response.data : [200, 204].includes(response.status))
+      return (response.data ? (Array.isArray(response.data) ? response.data.map(normalizeAwsResponse) : normalizeAwsResponse(response.data)) : [200, 204].includes(response.status))
     } catch (e) {
       console.error('Svc request raised an error', e)
       Loading.hide()
