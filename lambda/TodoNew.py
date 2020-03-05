@@ -7,24 +7,6 @@ dynamodb = boto3.client('dynamodb')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-def item_exists(id):
-  try:
-    res = dynamodb.get_item(
-        TableName='todos',
-        Key={'id': {
-            'N': str(id),
-        }},
-        AttributesToGet=['description', 'completed'],
-        ConsistentRead=False,
-        ReturnConsumedCapacity='NONE',
-    )
-    meta = res.get("ResponseMetadata",{})
-    headers = meta.get("HTTPHeaders",{})
-    length = int(headers.get("content-length",3))
-    return length > 2
-  except Exception as e:
-    return True
-
 def get_all_todos_ids():
     res = dynamodb.scan(
         TableName='todos',
@@ -54,10 +36,6 @@ def insert_data(event):
         return 405, 'Request does not contain description or completed'
     if 'id' not in event:
         event['id'] = find_least_unused_id()
-    elif item_exists(int(event["id"])):
-        return 409 , 'item_exists() todo already exists'
-    else:
-        logger.info('id {}'.format(event["id"]))
     try:
         dynamodb.update_item(
             TableName='todos',
